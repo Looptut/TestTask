@@ -16,8 +16,8 @@ namespace TestTask
         /// Второй параметр - путь до второго файла.</param>
         static void Main(string[] args)
         {
-            IReadOnlyStream inputStream1 = GetInputStream(args[0]);
-            IReadOnlyStream inputStream2 = GetInputStream(args[1]);
+            using IReadOnlyStream inputStream1 = GetInputStream(args[0]);
+            using IReadOnlyStream inputStream2 = GetInputStream(args[1]);
 
             IList<LetterStats> singleLetterStats = FillSingleLetterStats(inputStream1);
             IList<LetterStats> doubleLetterStats = FillDoubleLetterStats(inputStream2);
@@ -28,7 +28,7 @@ namespace TestTask
             PrintStatistic(singleLetterStats);
             PrintStatistic(doubleLetterStats);
 
-            // TODO : Необжодимо дождаться нажатия клавиши, прежде чем завершать выполнение программы.
+            Console.ReadKey();
         }
 
         /// <summary>
@@ -50,20 +50,29 @@ namespace TestTask
         private static IList<LetterStats> FillSingleLetterStats(IReadOnlyStream stream)
         {
             stream.ResetPositionToStart();
+            var stats = new Dictionary<char, int>();
             while (!stream.IsEof)
             {
                 char c = stream.ReadNextChar();
-                // TODO : заполнять статистику с использованием метода IncStatistic. Учёт букв - регистрозависимый.
+                
+                if(!char.IsLetter(c))
+                    continue;
+                
+                stats.TryAdd(c, 0);
+                stats[c]++;
             }
 
-            //return ???;
-
-            throw new NotImplementedException();
+            var result = new List<LetterStats>();
+            foreach (var stat in stats)
+            {
+                result.Add(new LetterStats(){Letter = stat.Key.ToString(),  Count = stat.Value});
+            }
+            return result;
         }
 
         /// <summary>
         /// Ф-ция считывающая из входящего потока все буквы, и возвращающая коллекцию статистик вхождения парных букв.
-        /// В статистику должны попадать только пары из одинаковых букв, например АА, СС, УУ, ЕЕ и т.д.
+        /// В статистику должны попадать только пары из одинаковых букв, например АА, cС, УУ, ee и т.д.
         /// Статистика - НЕ регистрозависимая!
         /// </summary>
         /// <param name="stream">Стрим для считывания символов для последующего анализа</param>
@@ -71,15 +80,33 @@ namespace TestTask
         private static IList<LetterStats> FillDoubleLetterStats(IReadOnlyStream stream)
         {
             stream.ResetPositionToStart();
+            var stats = new Dictionary<string, int>();
+            if(stream.IsEof)
+                return new  List<LetterStats>();
+                
+            char prevChar = stream.ReadNextChar();
+            
             while (!stream.IsEof)
             {
                 char c = stream.ReadNextChar();
-                // TODO : заполнять статистику с использованием метода IncStatistic. Учёт букв - НЕ регистрозависимый.
+                if (!prevChar.EqualsSensitiveCase(c, true))
+                {
+                    prevChar = c;
+                    continue;
+                }
+                
+                var combination = $"{prevChar}{c}"; 
+                stats.TryAdd(combination, 0);
+                stats[combination]++;
+                prevChar = c;
             }
 
-            //return ???;
-
-            throw new NotImplementedException();
+            var result = new List<LetterStats>();
+            foreach (var stat in stats)
+            {
+                result.Add(new LetterStats(){Letter = stat.Key,  Count = stat.Value});
+            }
+            return result;
         }
 
         /// <summary>
@@ -91,39 +118,30 @@ namespace TestTask
         /// <param name="charType">Тип букв для анализа</param>
         private static void RemoveCharStatsByType(IList<LetterStats> letters, CharType charType)
         {
-            // TODO : Удалить статистику по запрошенному типу букв.
             switch (charType)
             {
                 case CharType.Consonants:
+                    letters.TrimConsonant();
                     break;
                 case CharType.Vowel:
+                    letters.TrimVowels();
+                    break;
+                default:
                     break;
             }
-            
         }
 
         /// <summary>
-        /// Ф-ция выводит на экран полученную статистику в формате "{Буква} : {Кол-во}"
-        /// Каждая буква - с новой строки.
+        /// Ф-ция выводит на экран полученную статистику в формате "{Буква/пара} : {Кол-во}"
+        /// Каждая буква/пара - с новой строки.
         /// Выводить на экран необходимо предварительно отсортировав набор по алфавиту.
         /// В конце отдельная строчка с ИТОГО, содержащая в себе общее кол-во найденных букв/пар
         /// </summary>
         /// <param name="letters">Коллекция со статистикой</param>
-        private static void PrintStatistic(IEnumerable<LetterStats> letters)
+        private static void PrintStatistic(IList<LetterStats> letters)
         {
-            // TODO : Выводить на экран статистику. Выводить предварительно отсортировав по алфавиту!
-            throw new NotImplementedException();
+            LetterStatisticsPrinter.PrintStatisticSorted(letters);
         }
-
-        /// <summary>
-        /// Метод увеличивает счётчик вхождений по переданной структуре.
-        /// </summary>
-        /// <param name="letterStats"></param>
-        private static void IncStatistic(LetterStats letterStats)
-        {
-            letterStats.Count++;
-        }
-
 
     }
 }
